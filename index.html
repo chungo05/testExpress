@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UAQ_Software_Terminal_Exam_v3.0</title>
+    <style>
+        :root {
+            --bg: #0d0d0d;
+            --text: #00ff41;
+            --accent: #008f11;
+            --dim: #003b00;
+            --abort: #ff3e3e;
+        }
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        #terminal {
+            width: 100%;
+            max-width: 850px;
+            border: 1px solid var(--accent);
+            padding: 25px;
+            box-shadow: 0 0 20px var(--dim);
+        }
+        h1, h2 { text-transform: uppercase; border-bottom: 2px solid var(--accent); margin-bottom: 15px; }
+        .menu-btn, .option-btn {
+            display: block;
+            width: 100%;
+            background: none;
+            border: 1px solid var(--accent);
+            color: var(--text);
+            padding: 12px;
+            margin: 8px 0;
+            cursor: pointer;
+            text-align: left;
+            font-family: inherit;
+            transition: 0.2s;
+        }
+        .menu-btn:hover, .option-btn:hover { background-color: var(--dim); }
+        .btn-abort { border-color: var(--abort); color: var(--abort); margin-top: 25px; font-weight: bold; }
+        .btn-abort:hover { background-color: #450000; }
+        .hidden { display: none; }
+        input[type="text"] {
+            width: 100%;
+            background: none;
+            border: none;
+            border-bottom: 1px solid var(--text);
+            color: var(--text);
+            font-family: inherit;
+            font-size: 1.1em;
+            outline: none;
+            padding: 10px 0;
+            margin-top: 15px;
+        }
+        .controls { display: flex; gap: 15px; margin-top: 20px; }
+        .correct { border-color: var(--text); }
+        .incorrect { border-color: var(--abort); color: var(--abort); }
+        #stats { font-size: 0.85em; margin-top: 25px; border-top: 1px dashed var(--accent); padding-top: 15px; opacity: 0.8; }
+        .key-box { color: #ffff00; background: #222; padding: 10px; border-left: 4px solid #ffff00; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div id="terminal">
+    <div id="view-menu">
+        <h1>SISTEMA_EXAMEN_SOFTWARE_v3.0</h1>
+        <p>> Usuario: Massimo (21_STUDENT_UAQ)</p>
+        <p>> Selecciona un bloque de estudio para iniciar:</p>
+        <div id="menu-items"></div>
+        <div id="stats"></div>
+    </div>
+
+    <div id="view-quiz" class="hidden">
+        <h2 id="quiz-title"></h2>
+        <p id="question-text" style="font-size: 1.1em; line-height: 1.4;"></p>
+        
+        <div id="tf-options" class="hidden">
+            <button class="option-btn" onclick="checkTF(true)">> [T] VERDADERO</button>
+            <button class="option-btn" onclick="checkTF(false)">> [F] FALSO</button>
+        </div>
+
+        <div id="open-options" class="hidden">
+            <input type="text" id="open-answer" placeholder="Escribe tu respuesta y presiona ENTER..." onkeypress="if(event.key === 'Enter') showKey()">
+            <div id="answer-key" class="hidden">
+                <div class="key-box">
+                    <strong>[SISTEMA_REF]:</strong> <span id="key-text"></span>
+                </div>
+                <p>¿Tu respuesta coincide con el concepto?</p>
+                <div class="controls">
+                    <button class="option-btn correct" onclick="selfGrade(true)">[SÍ] CORRECTO</button>
+                    <button class="option-btn incorrect" onclick="selfGrade(false)">[NO] INCORRECTO</button>
+                </div>
+            </div>
+        </div>
+
+        <button class="option-btn btn-abort" onclick="initMenu()">> [ESC] ABORTAR_Y_VOLVER_AL_MENU</button>
+    </div>
+
+    <div id="view-results" class="hidden">
+        <h1>RESULTADOS_SESION</h1>
+        <p id="final-score" style="font-size: 1.4em;"></p>
+        <button class="menu-btn" onclick="initMenu()">> VOLVER_AL_MENU</button>
+    </div>
+</div>
+
+<script>
+    const quizData = [
+        {
+            title: "Ingeniería de Requerimientos",
+            questions: [
+                { q: "¿Un requerimiento es una condición que se pide a una persona u otra entidad?", type: "tf", a: true, key: "Definición básica" },
+                { q: "¿Los requerimientos de sistema deben ser precisos y definir exactamente qué se realizará?", type: "tf", a: true, key: "Correcto" },
+                { q: "¿Los requerimientos de usuario son solo declaraciones en lenguaje natural?", type: "tf", a: false, key: "Son declaraciones en lenguaje natural Y diagramas" },
+                { q: "¿La viabilidad económica incluye solo el tiempo del analista?", type: "tf", a: false, key: "Incluye tiempo, equipo, costos de estudio, hardware y software" },
+                { q: "¿La técnica de cuestionarios permite involucrar a más personas y puntos de vista?", type: "tf", a: true, key: "Correcto" },
+                { q: "¿Qué evalúa la viabilidad técnica?", type: "open", key: "Si es posible actualizar o incrementar los recursos técnicos actuales" },
+                { q: "¿Cómo se clasifican los requerimientos de sistema?", type: "open", key: "Funcionales (proporcionar el sistema) y No Funcionales (restricciones)" },
+                { q: "¿Qué porcentaje de ponderación tienen los requerimientos funcionales?", type: "open", key: "25%" },
+                { q: "Menciona los 3 tipos clave de viabilidad.", type: "open", key: "Técnica, Económica y Operativa" },
+                { q: "¿A qué tipo de requerimiento pertenecen los 'Informes'?", type: "open", key: "Funcionales (de usuario)" }
+            ]
+        },
+        {
+            title: "Toma de Decisiones",
+            questions: [
+                { q: "¿La primera etapa es la identificación de los criterios de decisión?", type: "tf", a: false, key: "Es la Identificación de un problema" },
+                { q: "¿La implantación requiere comunicar la decisión y conseguir compromiso?", type: "tf", a: true, key: "Correcto" },
+                { q: "¿El desarrollo de alternativas consiste en presentar opciones factibles?", type: "tf", a: true, key: "Correcto" },
+                { q: "¿La evaluación de efectividad solo se hace si el problema persiste?", type: "tf", a: false, key: "Se hace siempre para comprobar si se corrigió" },
+                { q: "¿La asignación de ponderaciones ayuda a priorizar criterios?", type: "tf", a: true, key: "Correcto" },
+                { q: "¿Qué debe disponer el administrador para considerar algo como problema?", type: "open", key: "Autoridad, dinero e información" },
+                { q: "¿Por qué el análisis de alternativas puede ser subjetivo?", type: "open", key: "Debido al juicio de valor del responsable" },
+                { q: "¿Qué implica la etapa de 'Selección de una alternativa'?", type: "open", key: "Elegir la mejor opción según el procedimiento establecido" },
+                { q: "¿Cómo se define un problema en este proceso?", type: "open", key: "Discrepancia entre el estado actual y el deseado" },
+                { q: "¿Qué sucede si una decisión no corrige el problema?", type: "open", key: "Se estudia qué fase fue errónea y se toma una nueva decisión" }
+            ]
+        },
+        {
+            title: "Ambiente Organizacional",
+            questions: [
+                { q: "¿El ambiente organizacional se basa solo en el entorno físico?", type: "tf", a: false, key: "Se basa en las emociones y motivación de los miembros" },
+                { q: "¿Un buen clima favorece el trabajo en equipo?", type: "tf", a: true, key: "Correcto" },
+                { q: "¿La falta de motivación es un peligro de un mal ambiente?", type: "tf", a: true, key: "Correcto" },
+                { q: "¿Starbucks considera a sus empleados como socios?", type: "tf", a: true, key: "Correcto" },
+                { q: "¿El comportamiento organizacional no afecta el ambiente?", type: "tf", a: false, key: "Sí es un efecto del ambiente organizacional" },
+                { q: "Menciona 2 beneficios de un buen clima organizacional.", type: "open", key: "Rendimiento, integración, imagen, trabajo equipo" },
+                { q: "¿Cuáles son los 3 peligros de un mal ambiente?", type: "open", key: "Falta de motivación, baja productividad, mala imagen" },
+                { q: "¿Qué abarca el ambiente generado por las emociones?", type: "open", key: "Parte física, emocional y mental" },
+                { q: "¿Qué factor en Starbucks fomenta el bienestar del grupo?", type: "open", key: "Colectivismo" },
+                { q: "Menciona una característica estructural del ambiente.", type: "open", key: "Efectos del ambiente organizacional" }
+            ]
+        },
+        {
+            title: "Muestreo y Observación",
+            questions: [
+                { q: "¿El muestreo de tiempos usa intervalos escogidos al azar?", type: "tf", a: true, key: "Correcto" },
+                { q: "¿El muestreo de eventos observa comportamientos íntegros en contexto natural?", type: "tf", a: true, key: "Correcto" },
+                { q: "¿Una ventaja de la observación es ver eventos conforme suceden?", type: "tf", a: true, key: "Correcto" },
+                { q: "¿El muestreo de tiempos es ideal para eventos únicos como reuniones de consejo?", type: "tf", a: false, key: "Esos son muestreos de eventos" },
+                { q: "¿La observación se lleva gran cantidad de tiempo del analista?", type: "tf", a: true, key: "Correcto" },
+                { q: "Define Muestreo de Tiempos.", type: "open", key: "Poner intervalos específicos para observar actividades de gerentes" },
+                { q: "Menciona un ejemplo de Muestreo de Eventos.", type: "open", key: "Reuniones de consejo o sesiones de entrenamiento" },
+                { q: "¿Qué tipo de vista proporciona el muestreo de tiempos?", type: "open", key: "Vista representativa de actividades frecuentes" },
+                { q: "Menciona una desventaja de la observación.", type: "open", key: "Consume tiempo, se pierde muestra representativa de decisiones frecuentes" },
+                { q: "¿Para qué sirve el muestreo en general?", type: "open", key: "Para obtener una vista representativa de las actividades" }
+            ]
+        },
+        {
+            title: "Diagrama de Contexto",
+            questions: [
+                { q: "¿El diagrama de contexto representa el sistema como múltiples procesos?", type: "tf", a: false, key: "Se representa como UN SOLO proceso" },
+                { q: "¿Las relaciones se dibujan con líneas etiquetadas?", type: "tf", a: true, key: "Correcto" },
+                { q: "¿Las entidades pasivas inician eventos frecuentemente?", type: "tf", a: false, key: "Son las entidades ACTIVAS" },
+                { q: "¿El diagrama define el alcance de la investigación?", type: "tf", a: true, key: "Correcto" },
+                { q: "¿Una entidad autónoma está separada del sistema?", type: "tf", a: true, key: "Correcto" },
+                { q: "¿Qué representan los cuadros etiquetados?", type: "open", key: "Entidades o Actores" },
+                { q: "Define entidad Cooperativa.", type: "open", key: "Entidad predecible usada por el sistema para resultados deseados" },
+                { q: "¿Cómo se representan los árboles de decisión?", type: "open", key: "En diagramas de flujo de sistemas" },
+                { q: "¿Qué muestra el diagrama además del proceso?", type: "open", key: "Flujos de información con entidades externas" },
+                { q: "¿Qué tipo de entidad afecta al sistema a través de restricciones?", type: "open", key: "Autónoma (Independiente)" }
+            ]
+        },
+        {
+            title: "Gestión de Proyectos",
+            questions: [
+                { q: "¿El ciclo de vida se basa en una curva de esfuerzo vs tiempo?", type: "tf", a: true, key: "Correcto" },
+                { q: "¿La cédula del proyecto se crea en la fase de Ejecución?", type: "tf", a: false, key: "Se crea en la fase de INICIO" },
+                { q: "¿La fase de mayor esfuerzo es la Planeación?", type: "tf", a: false, key: "Es la EJECUCIÓN" },
+                { q: "¿El cierre involucra el aprendizaje de la experiencia?", type: "tf", a: true, key: "Correcto" },
+                { q: "¿La planeación permite desarrollar un calendario?", type: "tf", a: true, key: "Correcto" },
+                { q: "¿Qué resulta de la fase de planeación?", type: "open", key: "El plan inicial del proyecto" },
+                { q: "Menciona 2 actividades de la fase de Ejecución.", type: "open", key: "Dirigir equipo, reunirse, comunicar, resolver conflictos" },
+                { q: "¿Qué sucede con los documentos en la fase de cierre?", type: "open", key: "Se archivan" },
+                { q: "¿Qué permite perfeccionar la fase de planeación?", type: "open", key: "El alcance del proyecto" },
+                { q: "Menciona una actividad final del cierre.", type: "open", key: "Redacción del informe final" }
+            ]
+        }
+    ];
+
+    let currentQ = null;
+    let idxQ = 0;
+    let score = 0;
+
+    function initMenu() {
+        showV('view-menu');
+        const list = document.getElementById('menu-items');
+        list.innerHTML = '';
+        quizData.forEach((b, i) => {
+            const btn = document.createElement('button');
+            btn.className = 'menu-btn';
+            btn.innerText = `> BLOCK_${i+1}: ${b.title}`;
+            btn.onclick = () => start(i);
+            list.appendChild(btn);
+        });
+        updateStats();
+    }
+
+    function start(i) {
+        currentQ = quizData[i];
+        idxQ = 0;
+        score = 0;
+        showV('view-quiz');
+        render();
+    }
+
+    function render() {
+        const q = currentQ.questions[idxQ];
+        document.getElementById('quiz-title').innerText = `${currentQ.title} [${idxQ + 1}/10]`;
+        document.getElementById('question-text').innerText = q.q;
+        document.getElementById('open-answer').value = '';
+        hide('tf-options');
+        hide('open-options');
+        hide('answer-key');
+
+        if (q.type === 'tf') show('tf-options');
+        else show('open-options');
+    }
+
+    function checkTF(v) {
+        if (currentQ.questions[idxQ].a === v) score++;
+        else alert(`[LOG]: INCORRECTO. ${currentQ.questions[idxQ].key}`);
+        step();
+    }
+
+    function showKey() {
+        document.getElementById('key-text').innerText = currentQ.questions[idxQ].key;
+        show('answer-key');
+    }
+
+    function selfGrade(ok) {
+        if (ok) score++;
+        step();
+    }
+
+    function step() {
+        idxQ++;
+        if (idxQ < 10) render();
+        else end();
+    }
+
+    function end() {
+        showV('view-results');
+        document.getElementById('final-score').innerText = `PUNTUACIÓN: ${score}/10`;
+        const k = `massimo_score_v3_${currentQ.title}`;
+        const h = localStorage.getItem(k) || 0;
+        if (score > h) localStorage.setItem(k, score);
+    }
+
+    function updateStats() {
+        let s = ">> HISTORIAL_LOG:<br>";
+        quizData.forEach(b => {
+            const val = localStorage.getItem(`massimo_score_v3_${b.title}`) || 0;
+            s += `   - ${b.title}: ${val}/10<br>`;
+        });
+        document.getElementById('stats').innerHTML = s;
+    }
+
+    function showV(id) {
+        ['view-menu', 'view-quiz', 'view-results'].forEach(v => hide(v));
+        show(id);
+    }
+    function show(id) { document.getElementById(id).classList.remove('hidden'); }
+    function hide(id) { document.getElementById(id).classList.add('hidden'); }
+
+    initMenu();
+</script>
+
+</body>
+</html>
